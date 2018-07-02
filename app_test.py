@@ -15,7 +15,7 @@ def initialize_database():
     with app.app_context():
         connection = get_database()
         cursor = connection.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, link TEXT NOT NULL)")
+        cursor.execute('CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, link TEXT NOT NULL)')
         connection.commit()
         connection.close()
 
@@ -36,7 +36,7 @@ def callback():
     connection = get_database()
     cursor = connection.cursor()
     random_number = random.randint(1, 1800)
-    link = cursor.execute("SELECT link FROM links WHERE id = %s" % random_number)
+    link = cursor.execute('SELECT link FROM links WHERE id = %s' % random_number)
     link = link.fetchone()[0]
     connection.close()
     return link
@@ -49,25 +49,25 @@ def update():
 
 def async_update_links():
     with app.app_context():
-        home_url = "http://www.dmm.co.jp/digital/videoa/-/list/=/sort=ranking"
-        html_parser = "html.parser"
+        home_url = 'http://www.dmm.co.jp/digital/videoa/-/list/=/sort=ranking'
+        html_parser = 'html.parser'
         image_urls = []
 
         for page in range(1, 16):
             app.logger.info('Crawling page %s' % page)
-            url = home_url + "/page=" + str(page)
+            url = home_url + '/page=' + str(page)
             request = requests.get(url)
             if request.status_code == requests.codes.ok:
                 soup = BeautifulSoup(request.content, html_parser)
-                videos = soup.find_all("p", class_ = "tmb")
+                videos = soup.find_all('p', class_ = 'tmb')
 
                 for video in videos:
-                    url = video.find("a")["href"]
+                    url = video.find('a')['href']
                     request = requests.get(url)
                     if request.status_code == requests.codes.ok:
                         soup = BeautifulSoup(request.content, html_parser)
-                        image = soup.find("div", id = "sample-video")
-                        image_url = image.find("a")["href"]
+                        image = soup.find('div', id = 'sample-video')
+                        image_url = image.find('a')['href']
                         image_urls.append(image_url)
 
         connection = get_database()
