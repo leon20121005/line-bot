@@ -15,7 +15,7 @@ def initialize_database():
     with app.app_context():
         connection = get_database()
         cursor = connection.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, link TEXT NOT NULL)')
+        cursor.execute('CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, link TEXT NOT NULL, number TEXT NOT NULL)')
         connection.commit()
         connection.close()
 
@@ -35,7 +35,7 @@ def close_connection(exception):
 def callback():
     connection = get_database()
     cursor = connection.cursor()
-    random_number = random.randint(1, 1800)
+    random_number = random.randint(1, 2951)
     link = cursor.execute('SELECT link FROM links WHERE id = %s' % random_number)
     link = link.fetchone()[0]
     connection.close()
@@ -51,7 +51,7 @@ def async_update_links():
     with app.app_context():
         home_url = 'http://www.dmm.co.jp/digital/videoa/-/list/=/sort=ranking'
         html_parser = 'html.parser'
-        image_urls = []
+        video_list = []
 
         for page in range(1, 16):
             app.logger.info('Crawling page %s' % page)
@@ -68,14 +68,31 @@ def async_update_links():
                         soup = BeautifulSoup(request.content, html_parser)
                         image = soup.find('div', id = 'sample-video')
                         image_url = image.find('a')['href']
-                        image_urls.append(image_url)
+                        number = parse_number(image_url)
+                        if number is None:
+                            continue
+                        video_list.append((image_url, number))
 
         connection = get_database()
         cursor = connection.cursor()
-        for image_url in image_urls:
-            cursor.execute("INSERT INTO links (link) VALUES ('%s')" % image_url)
+        for video in video_list:
+            cursor.execute("""INSERT INTO links (link, number)
+                              SELECT * FROM (SELECT '%s', '%s')
+                              WHERE NOT EXISTS (SELECT link FROM links WHERE link = '%s')
+                              LIMIT 1""" % (video[0], video[1], video[0]))
         connection.commit()
         connection.close()
+
+def parse_number(image_url):
+    try:
+        number_section = image_url.split('/')[5]
+        english_part = ''.join([char for char in number_section if not char.isdigit()])
+        english_part = english_part.split('_')[1] if '_' in english_part else english_part
+        digit_part = number_section[-3:]
+        return english_part + digit_part
+    except IndexError as error:
+        print(error)
+        return None
 
 if __name__ == '__main__':
     initialize_database()
