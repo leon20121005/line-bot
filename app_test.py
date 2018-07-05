@@ -41,8 +41,19 @@ def callback():
     connection.close()
     return link
 
+@app.route('/list')
+def list_links():
+    connection = get_database()
+    cursor = connection.cursor()
+    links = cursor.execute('SELECT * FROM links')
+    result = ""
+    for link in links:
+        result += '(%s, %s, %s)' % (link[0], link[1], link[2]) + '<br>'
+    connection.close()
+    return result
+
 @app.route('/update')
-def update():
+def update_links():
     thread = Thread(target = async_update_links)
     thread.start()
     return 'Start updating database'
@@ -50,11 +61,12 @@ def update():
 def async_update_links():
     with app.app_context():
         home_url = 'http://www.dmm.co.jp/digital/videoa/-/list/=/sort=ranking'
+        number_page = 15
         html_parser = 'html.parser'
         video_list = []
 
-        for page in range(1, 16):
-            app.logger.info('Crawling page %s' % page)
+        for page in range(1, number_page + 1):
+            print('Crawling page %s / %s' % (page, number_page))
             url = home_url + '/page=' + str(page)
             request = requests.get(url)
             if request.status_code == requests.codes.ok:
@@ -82,6 +94,7 @@ def async_update_links():
                               LIMIT 1""" % (video[0], video[1], video[0]))
         connection.commit()
         connection.close()
+    print('Finish updating database')
 
 def parse_number(image_url):
     try:
